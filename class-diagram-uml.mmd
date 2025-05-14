@@ -1,0 +1,526 @@
+classDiagram
+    direction LR
+
+    namespace Domain {
+        class User {
+            +UUID id
+            +String username
+            +String hashedPassword
+            +String email
+            +UserProfile profile
+            +List~UserPreference~ preferences
+            +List~Crop~ crops
+            +List~Subscription~ subscriptions
+            +DateTime createdAt
+            +DateTime updatedAt
+            +validatePassword(plainPassword)
+            +updateProfile(profileData)
+        }
+        class UserProfile {
+            +String firstName
+            +String lastName
+            +String phoneNumber
+            +Address address
+        }
+        class UserPreference {
+            +String key
+            +String value
+        }
+        class Crop {
+            +UUID id
+            +String name
+            +String variety
+            +PlantingDate plantingDate
+            +HarvestDate expectedHarvestDate
+            +List~CropStage~ stages
+            +List~Diagnosis~ diagnoses
+            +List~HistoryLog~ history
+            +User owner
+            +addLogEntry(entry)
+        }
+        class CropStage {
+            +String name
+            +DateTime startDate
+            +DateTime endDate
+        }
+        class HistoryLog {
+            +UUID id
+            +DateTime timestamp
+            +String eventType
+            +String description
+            +User performedBy
+        }
+        class Diagnosis {
+            +UUID id
+            +ImageMetadata image
+            +String diseaseDetected
+            +Float confidenceScore
+            +DateTime diagnosisDate
+            +TreatmentPlan recommendedTreatment
+            +Crop crop
+        }
+        class ImageMetadata {
+            +String originalFileName
+            +String storagePath
+            +String mimeType
+            +Long size
+        }
+        class TreatmentPlan {
+            +UUID id
+            +String description
+            +List~RecommendedAction~ actions
+            +List~ShoppingListItem~ shoppingList
+            +Diagnosis diagnosis
+        }
+        class RecommendedAction {
+            +String actionDescription
+            +String productToUse
+            +String dosage
+        }
+        class ShoppingListItem {
+            +String productName
+            +String quantity
+            +String notes
+        }
+        class Subscription {
+            +UUID id
+            +User user
+            +Plan plan
+            +DateTime startDate
+            +DateTime endDate
+            +SubscriptionStatus status
+            +List~PaymentRecord~ paymentHistory
+        }
+        class Plan {
+            +UUID id
+            +String name
+            +Money price
+            +String billingCycle (e.g., MONTHLY, YEARLY)
+            +List~String~ features
+        }
+        class PaymentRecord {
+            +UUID id
+            +DateTime paymentDate
+            +Money amount
+            +String transactionId
+            +PaymentStatus status
+        }
+        class NotificationLog {
+            +UUID id
+            +User recipient
+            +NotificationChannel channel (EMAIL, SMS, PUSH)
+            +String subject
+            +String content
+            +DateTime sentAt
+            +NotificationStatus status
+        }
+        class SubscriptionStatus {
+            <<enum>>
+            ACTIVE
+            INACTIVE
+            CANCELLED
+            PAST_DUE
+        }
+        class PaymentStatus {
+            <<enum>>
+            SUCCESSFUL
+            PENDING
+            FAILED
+        }
+        class NotificationChannel {
+            <<enum>>
+            EMAIL
+            SMS
+            PUSH
+        }
+        class NotificationStatus {
+            <<enum>>
+            SENT
+            FAILED
+            PENDING
+        }
+
+        class IUserRepository {
+            <<interface>>
+            +save(User user) User
+            +findById(UUID id) User
+            +findByUsername(String username) User
+            +findAll() List~User~
+        }
+        class ICropRepository {
+            <<interface>>
+            +save(Crop crop) Crop
+            +findById(UUID id) Crop
+            +findByUser(User user) List~Crop~
+        }
+        class IDiagnosisRepository {
+            <<interface>>
+            +save(Diagnosis diagnosis) Diagnosis
+            +findById(UUID id) Diagnosis
+            +findByCrop(Crop crop) List~Diagnosis~
+        }
+        class ITreatmentPlanRepository {
+            <<interface>>
+            +save(TreatmentPlan plan) TreatmentPlan
+            +findById(UUID id) TreatmentPlan
+        }
+        class ISubscriptionRepository {
+            <<interface>>
+            +save(Subscription subscription) Subscription
+            +findById(UUID id) Subscription
+            +findByUser(User user) List~Subscription~
+        }
+        class IHistoryLogRepository {
+            <<interface>>
+            +save(HistoryLog log) HistoryLog
+        }
+        class IPaymentRecordRepository {
+            <<interface>>
+            +save(PaymentRecord record) PaymentRecord
+        }
+        class INotificationLogRepository {
+            <<interface>>
+            +save(NotificationLog log) NotificationLog
+        }
+    }
+
+    namespace Application {
+        class UserDTO {
+            <<DTO>>
+            +UUID id
+            +String username
+            +String email
+            +UserProfileDTO profile
+        }
+        class CropDTO {
+            <<DTO>>
+            +UUID id
+            +String name
+        }
+        class DiagnosisRequestDTO {
+            <<DTO>>
+            +File imageFile
+            +UUID cropId
+        }
+        class DiagnosisResultDTO {
+            <<DTO>>
+            +UUID diagnosisId
+            +String disease
+            +Float confidence
+        }
+        class SubscriptionDTO {
+            <<DTO>>
+            +UUID id
+            +String planName
+            +String status
+        }
+
+        class ISecurityService {
+            <<service>>
+            +login(username, password) TokenDTO
+            +register(RegisterUserDTO dto) UserDTO
+            +validateToken(token) UserPrincipal
+        }
+        class IUserService {
+            <<service>>
+            +createUser(UserCreationDTO dto) UserDTO
+            +getUserById(UUID id) UserDTO
+            +updateUserProfile(UUID userId, ProfileDTO dto) UserDTO
+            +getUserPreferences(UUID userId) List~PreferenceDTO~
+        }
+        class ICropService {
+            <<service>>
+            +createCrop(UUID userId, CropCreationDTO dto) CropDTO
+            +getCropById(UUID cropId) CropDTO
+            +addHistoryToCrop(UUID cropId, HistoryLogDTO dto)
+        }
+        class IDiagnosisOrchestrationService {
+            <<service>>
+            +requestDiagnosis(DiagnosisRequestDTO dto) UUID_jobId
+            +getDiagnosisResult(UUID diagnosisId) DiagnosisResultDTO
+        }
+        class ISubscriptionService {
+            <<service>>
+            +createSubscription(UUID userId, PlanIdDTO dto) SubscriptionDTO
+            +cancelSubscription(UUID subscriptionId)
+            +processPaymentWebhook(WebhookPayload payload)
+        }
+        class ITreatmentService {
+            <<service>>
+            +generateTreatmentPlan(UUID diagnosisId) TreatmentPlanDTO
+            +getShoppingList(UUID treatmentPlanId) List~ShoppingListItemDTO~
+        }
+        class ISyncService {
+            <<service>>
+            +synchronizeClientData(ClientDataBatchDTO dto) SyncResultDTO
+        }
+        class INotificationOrchestrationService {
+            <<service>>
+            +sendDiagnosisReadyNotification(UserDTO user, DiagnosisResultDTO diagnosis)
+            +sendSubscriptionReminder(UserDTO user, SubscriptionDTO subscription)
+        }
+        class IReportService {
+            <<service>>
+            +generateCropPerformanceReport(UUID userId, DateRangeDTO range) ReportDataDTO
+            +exportReport(ReportDataDTO data, ExportFormat format) File
+        }
+
+        class IJwtService {
+            <<service>>
+            +generateToken(UserPrincipal principal) String
+            +validateTokenAndGetPrincipal(String token) UserPrincipal
+        }
+        class IPaymentGateway {
+            <<gateway>>
+            +initiatePayment(PaymentRequestDTO dto) PaymentResponseDTO
+            +verifyPayment(String transactionId) PaymentStatus
+        }
+        class IQueueService {
+            <<service>>
+            +publish(String queueName, MessageDTO message)
+            +subscribe(String queueName, MessageHandler handler)
+        }
+        class IAIService {
+            <<service>>
+            +performInference(ImageFile image) AIServiceResultDTO
+        }
+        class IStorageService {
+            <<service>>
+            +uploadFile(String bucket, String key, File file) FileURL
+            +downloadFile(String bucket, String key) File
+        }
+        class IWeatherService {
+            <<service>>
+            +getForecast(LocationDTO location) WeatherForecastDTO
+        }
+        class IExternalMessageSender {
+            <<service>>
+            +sendEmail(EmailDTO dto)
+            +sendSms(SmsDTO dto)
+            +sendPushNotification(PushDTO dto)
+        }
+        class IDataExporter {
+            <<service>>
+            +exportToCsv(Object data, String fileName) File
+            +exportToPdf(Object data, String fileName) File
+        }
+
+    }
+
+    namespace Interface {
+        class SecurityController {
+            +ISecurityService securityService
+            +login(LoginRequest req) ResponseEntity
+            +register(RegisterRequest req) ResponseEntity
+        }
+        class UserController {
+            +IUserService userService
+            +createUser(UserCreationRequest req) ResponseEntity
+            +getUser(UUID id) ResponseEntity
+        }
+        class CropController {
+            +ICropService cropService
+            +createCrop(CropCreationRequest req) ResponseEntity
+            +getCrop(UUID id) ResponseEntity
+        }
+        class DiagnosisController {
+            +IDiagnosisOrchestrationService diagnosisService
+            +uploadImageForDiagnosis(MultipartFile image, UUID cropId) ResponseEntity
+        }
+        class SubscriptionController {
+            +ISubscriptionService subscriptionService
+            +subscribe(SubscriptionRequest req) ResponseEntity
+            +niubizWebhook(WebhookPayload payload) ResponseEntity
+        }
+        class TreatmentController {
+            +ITreatmentService treatmentService
+            +getTreatmentForDiagnosis(UUID diagnosisId) ResponseEntity
+        }
+        class SyncController {
+            +ISyncService syncService
+            +syncData(SyncDataRequest req) ResponseEntity
+        }
+        class NotificationController {
+            +INotificationOrchestrationService notificationService
+            // Endpoints typically triggered by internal events, or admin actions
+        }
+        class ReportController {
+            +IReportService reportService
+            +getCropReport(ReportRequest req) ResponseEntity
+        }
+        class AiInferenceWorker {
+            +IQueueService queueService
+            +IAIService aiService
+            +IDiagnosisRepository diagnosisRepository
+            +processDiagnosisJob(DiagnosisJobMessage message)
+        }
+
+    }
+
+    namespace Infrastructure {
+        class PostgresUserRepository {
+            +DataSource dataSource
+        }
+        class PostgresCropRepository {
+            +DataSource dataSource
+        }
+        class PostgresDiagnosisRepository {
+            +DataSource dataSource
+        }
+        class PostgresTreatmentPlanRepository {
+            +DataSource dataSource
+        }
+        class PostgresSubscriptionRepository {
+            +DataSource dataSource
+        }
+        class PostgresHistoryLogRepository {
+            +DataSource dataSource
+        }
+        class PostgresPaymentRecordRepository {
+            +DataSource dataSource
+        }
+        class PostgresNotificationLogRepository {
+            +DataSource dataSource
+        }
+
+        class SpringJwtService {
+            +String jwtSecret
+            +Long jwtExpirationMs
+        }
+        class NiubizPaymentGatewayAdapter {
+            +String apiKey
+            +String secretKey
+            +HttpClient httpClient
+        }
+        class RabbitMQService {
+            +ConnectionFactory connectionFactory
+        }
+        class AwsS3StorageService {
+            +S3Client s3Client
+        }
+        class AwsSageMakerAIService {
+            +SageMakerClient sageMakerClient
+        }
+        class ExternalWeatherApiClient {
+            +String apiUrl
+            +String apiKey
+            +HttpClient httpClient
+        }
+        class MsgServiceAdapter {
+            +String apiUrl
+            +String apiKey
+            +HttpClient httpClient
+        }
+        class DataExporterImpl {
+            // Libraries for PDF/CSV generation
+        }
+
+    }
+
+    Application.ISecurityService ..> Domain.IUserRepository
+    Application.ISecurityService ..> IJwtService
+    Application.IUserService ..> Domain.IUserRepository
+    Application.ICropService ..> Domain.ICropRepository
+    Application.ICropService ..> Domain.IHistoryLogRepository
+    Application.IDiagnosisOrchestrationService ..> IQueueService
+    Application.IDiagnosisOrchestrationService ..> IStorageService
+    Application.IDiagnosisOrchestrationService ..> Domain.IDiagnosisRepository
+    Application.ISubscriptionService ..> Domain.ISubscriptionRepository
+    Application.ISubscriptionService ..> Domain.IPaymentRecordRepository
+    Application.ISubscriptionService ..> IPaymentGateway
+    Application.ISubscriptionService ..> Domain.IUserRepository
+    Application.ITreatmentService ..> Domain.ITreatmentPlanRepository
+    Application.ITreatmentService ..> Domain.IDiagnosisRepository
+    Application.ISyncService ..> Domain.IUserRepository 
+    Application.ISyncService ..> Domain.ICropRepository 
+    Application.ISyncService ..> Domain.IDiagnosisRepository 
+    Application.INotificationOrchestrationService ..> IExternalMessageSender
+    Application.INotificationOrchestrationService ..> Domain.INotificationLogRepository
+    Application.IReportService ..> Domain.ICropRepository 
+    Application.IReportService ..> Domain.IDiagnosisRepository 
+    Application.IReportService ..> IWeatherService
+    Application.IReportService ..> IDataExporter
+
+    Domain.User "1" -- "0..*" Domain.Crop : manages >
+    Domain.User "1" -- "0..*" Domain.Subscription : has >
+    Domain.Crop "1" -- "0..*" Domain.Diagnosis : undergoes >
+    Domain.Crop "1" -- "0..*" Domain.HistoryLog : logs >
+    Domain.Diagnosis "1" -- "0..1" Domain.TreatmentPlan : recommends >
+    Domain.Subscription "1" -- "0..*" Domain.PaymentRecord : records >
+    Domain.User "1" -- "1" Domain.UserProfile : has_profile >
+    Domain.User "1" -- "0..*" Domain.UserPreference : has_preferences >
+    Domain.Subscription "1" -- "1" Domain.Plan : uses >
+
+
+    Interface.SecurityController o--> Application.ISecurityService
+    Interface.UserController o--> Application.IUserService
+    Interface.CropController o--> Application.ICropService
+    Interface.DiagnosisController o--> Application.IDiagnosisOrchestrationService
+    Interface.SubscriptionController o--> Application.ISubscriptionService
+    Interface.TreatmentController o--> Application.ITreatmentService
+    Interface.SyncController o--> Application.ISyncService
+    Interface.NotificationController o--> Application.INotificationOrchestrationService
+    Interface.ReportController o--> Application.IReportService
+    Interface.AiInferenceWorker o--> Application.IQueueService
+    Interface.AiInferenceWorker o--> Application.IAIService
+    Interface.AiInferenceWorker o--> Domain.IDiagnosisRepository
+
+
+    Infrastructure.PostgresUserRepository ..|> Domain.IUserRepository
+    Infrastructure.PostgresCropRepository ..|> Domain.ICropRepository
+    Infrastructure.PostgresDiagnosisRepository ..|> Domain.IDiagnosisRepository
+    Infrastructure.PostgresTreatmentPlanRepository ..|> Domain.ITreatmentPlanRepository
+    Infrastructure.PostgresSubscriptionRepository ..|> Domain.ISubscriptionRepository
+    Infrastructure.PostgresHistoryLogRepository ..|> Domain.IHistoryLogRepository
+    Infrastructure.PostgresPaymentRecordRepository ..|> Domain.IPaymentRecordRepository
+    Infrastructure.PostgresNotificationLogRepository ..|> Domain.INotificationLogRepository
+
+    Infrastructure.SpringJwtService ..|> Application.IJwtService
+    Infrastructure.NiubizPaymentGatewayAdapter ..|> Application.IPaymentGateway
+    Infrastructure.RabbitMQService ..|> Application.IQueueService
+    Infrastructure.AwsS3StorageService ..|> Application.IStorageService
+    Infrastructure.AwsSageMakerAIService ..|> Application.IAIService
+    Infrastructure.ExternalWeatherApiClient ..|> Application.IWeatherService
+    Infrastructure.MsgServiceAdapter ..|> Application.IExternalMessageSender
+    Infrastructure.DataExporterImpl ..|> Application.IDataExporter
+
+
+    actor Agricultor
+
+
+    class WeatherAPI {
+      <<external>>
+    }
+
+    class MessagingService {
+      <<external>>
+    }
+    class NiubizGateway {
+      <<external>>
+    }
+    class S3Bucket {
+      <<external>> 
+    }
+    class SageMaker {
+      <<external>>
+    }
+
+    Agricultor --> Interface.SecurityController : interacts
+    Agricultor --> Interface.UserController : interacts
+    Agricultor --> Interface.CropController : interacts
+    Agricultor --> Interface.DiagnosisController : interacts
+    Agricultor --> Interface.SubscriptionController : interacts
+    Agricultor --> Interface.TreatmentController : interacts
+    Agricultor --> Interface.SyncController : interacts
+    Agricultor --> Interface.ReportController : interacts
+
+    Infrastructure.NiubizPaymentGatewayAdapter ..> NiubizGateway : uses
+    Infrastructure.ExternalWeatherApiClient ..> WeatherAPI : uses
+    Infrastructure.MsgServiceAdapter ..> MessagingService : uses
+    Infrastructure.AwsS3StorageService ..> S3Bucket : uses
+    Infrastructure.AwsSageMakerAIService ..> SageMaker : uses
+    Interface.AiInferenceWorker ..> SageMaker : triggers_inference
+    Interface.AiInferenceWorker ..> RabbitMQService : consumes_from
+    Application.DiagnosisOrchestrationService ..> RabbitMQService : publishes_to
+    Application.DiagnosisOrchestrationService ..> S3Bucket : stores_image_in
+    
