@@ -1,0 +1,142 @@
+erDiagram
+    users {
+        UUID id PK
+        VARCHAR username UK "NN"
+        VARCHAR hashed_password "NN"
+        VARCHAR email UK "NN"
+        TIMESTAMP created_at "NN"
+        TIMESTAMP updated_at "NN"
+    }
+    user_profiles {
+        UUID user_id PK, FK "users"
+        VARCHAR first_name
+        VARCHAR last_name
+        VARCHAR phone_number
+        VARCHAR address_street
+        VARCHAR address_city
+        VARCHAR address_state
+        VARCHAR address_zip
+        VARCHAR address_country
+    }   
+    user_preferences {
+        UUID id PK
+        UUID user_id FK "NN"
+        VARCHAR key "NN"
+        TEXT value "NN"
+    }
+    crops {
+        UUID id PK
+        UUID owner_id FK "NN"
+        VARCHAR name "NN"
+        VARCHAR variety
+        DATE planting_date
+        DATE expected_harvest_date
+        TIMESTAMP created_at "NN"
+        TIMESTAMP updated_at "NN"
+    }
+    crop_stages {
+        UUID id PK
+        UUID crop_id FK "NN"
+        VARCHAR name "NN"
+        TIMESTAMP start_date "NN"
+        TIMESTAMP end_date
+    }
+    history_logs {
+        UUID id PK
+        UUID crop_id FK "NN"
+        UUID performed_by_id FK "users"
+        TIMESTAMP timestamp "NN"
+        VARCHAR event_type "NN"
+        TEXT description "NN"
+    }
+    diagnoses {
+        UUID id PK
+        UUID crop_id FK "NN"
+        UUID image_metadata_id FK, UK "NN"
+        VARCHAR disease_detected
+        DECIMAL confidence_score
+        TIMESTAMP diagnosis_date "NN"
+    }
+    image_metadata {
+        UUID id PK
+        VARCHAR original_file_name "NN"
+        VARCHAR storage_path "NN"
+        VARCHAR mime_type
+        BIGINT size
+    }
+    treatment_plans {
+        UUID diagnosis_id PK, FK "NN"
+        TEXT description
+        TIMESTAMP created_at "NN"
+        TIMESTAMP updated_at "NN"
+    }
+    recommended_actions {
+        UUID id PK
+        UUID treatment_plan_id FK "NN"
+        TEXT action_description "NN"
+        VARCHAR product_to_use
+        VARCHAR dosage
+    }
+    shopping_list_items {
+        UUID id PK
+        UUID treatment_plan_id FK "NN"
+        VARCHAR product_name "NN"
+        VARCHAR quantity
+        TEXT notes
+    }
+    plans {
+        UUID id PK
+        VARCHAR name UK "NN"
+        DECIMAL price_amount "NN"
+        VARCHAR price_currency "NN"
+        VARCHAR billing_cycle "NN"
+        TEXT features
+        TIMESTAMP created_at "NN"
+        TIMESTAMP updated_at "NN"
+    }
+    subscriptions {
+        UUID id PK
+        UUID user_id FK "NN"
+        UUID plan_id FK "NN"
+        TIMESTAMP start_date "NN"
+        TIMESTAMP end_date
+        VARCHAR status "NN"
+        TIMESTAMP created_at "NN"
+        TIMESTAMP updated_at "NN"
+    }
+    payment_records {
+        UUID id PK
+        UUID subscription_id FK "NN"
+        TIMESTAMP payment_date "NN"
+        DECIMAL amount_amount "NN"
+        VARCHAR amount_currency "NN"
+        VARCHAR transaction_id UK "NN"
+        VARCHAR status "NN"
+        TIMESTAMP created_at "NN"
+    } 
+    notification_logs {
+        UUID id PK
+        UUID recipient_id FK "NN"
+        VARCHAR channel "NN"
+        VARCHAR subject
+        TEXT content "NN"
+        TIMESTAMP sent_at "NN"
+        VARCHAR status "NN"
+        TIMESTAMP created_at "NN"
+    }
+
+    users ||--|| user_profiles : "has profile"
+    users ||--|{ user_preferences : "has preferences"
+    users ||--|{ crops : "manages"
+    users ||--|{ subscriptions : "has subscriptions"
+    users ||--|{ notification_logs : "receives"
+    users }o--|{ history_logs : "performed by"
+    crops ||--|{ crop_stages : "has stages"
+    crops ||--|{ diagnoses : "undergoes"
+    crops ||--|{ history_logs : "logs events"
+    diagnoses ||--|| image_metadata : "uses image"
+    diagnoses ||--o| treatment_plans : "recommends"
+    treatment_plans ||--|{ recommended_actions : "includes action"
+    treatment_plans ||--|{ shopping_list_items : "includes item"
+    plans ||--|{ subscriptions : "used by"
+    subscriptions ||--|{ payment_records : "records payments"
