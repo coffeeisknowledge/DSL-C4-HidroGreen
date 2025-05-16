@@ -3,12 +3,11 @@ workspace "Plataforma HidroGreen" "Modelo C4 de la plataforma HidroGreen (Contex
     model {
         // Personas
         agricultor    = person "Agricultor"      "Usuario principal que gestiona sus cultivos y diagnósticos desde la plataforma."
-        administrador = person "Administrador"   "Usuario con permisos para supervisión global y configuración avanzada."
-        investigador  = person "Investigador"    "Centro de investigación agrícola que analiza datos históricos y performance de IA."
 
         // Sistemas Externos
         weatherApi = softwareSystem "API Meteorológica"      "Servicio externo de datos climáticos y pronósticos."    "Extern System"
         msgService = softwareSystem "Servicio de Mensajería" "Envío de SMS, email y push notifications."             "Extern System"
+        niubiz     = softwareSystem "Pasarela de Pagos Niubiz" "Sistema externo para gestionar pagos y suscripciones." "Extern System"
 
         // Sistema Principal
         hidroGreen = softwareSystem "Plataforma HidroGreen" "Solución IA para diagnóstico temprano de enfermedades en cultivos." {
@@ -42,6 +41,12 @@ workspace "Plataforma HidroGreen" "Modelo C4 de la plataforma HidroGreen (Contex
                 cropsController  = component "Crops Controller"
                 cropsService     = component "Crops Service"
                 historyComponent = component "History Component"
+            }
+            
+            apiSubscriptions = container "API de Suscripciones" "Gestiona suscripciones de los usuarios." "Java, Spring Boot" "API" {
+                subscriptionController = component "Subscription Controller" "Exposición de endpoints para suscripción y pagos."
+                subscriptionService    = component "Subscription Service"    "Lógica de manejo de suscripciones y pagos."
+                paymentGatewayComponent = component "Payment Gateway Component" "Interacción con la pasarela de pagos Niubiz."
             }
 
             apiDiagnosis    = container "API de Diagnóstico" "Procesa imágenes y orquesta inferencia IA."      "Python, FastAPI"   "API" {
@@ -82,6 +87,11 @@ workspace "Plataforma HidroGreen" "Modelo C4 de la plataforma HidroGreen (Contex
         }
 
         // Relaciones internas de componentes
+        subscriptionController -> subscriptionService   "Orquesta proceso de suscripción"
+        subscriptionService    -> paymentGatewayComponent "Conversa con la pasarela de pagos Niubiz"
+        paymentGatewayComponent -> niubiz                  "Realiza transacciones de pago"
+        subscriptionService    -> database                "Almacena datos de suscripción"
+        
         securityController -> securityService       "Orquesta autenticación"
         securityService    -> jwtService            "Genera y valida JWT"
         securityService    -> database              "Consulta usuarios"
@@ -123,8 +133,6 @@ workspace "Plataforma HidroGreen" "Modelo C4 de la plataforma HidroGreen (Contex
         agricultor    -> landingPage    "Visita y registra cuenta"
         agricultor    -> webApp         "Gestiona cultivos, diagnósticos y reportes"
         agricultor    -> mobileApp      "Captura fotos, diagnóstico offline y sincronización"
-        investigador  -> webApp         "Analiza datos y performance IA"
-        administrador -> webApp         "Supervisa plataforma"
 
         webApp        -> apiGateway     "REST calls"
         mobileApp     -> apiGateway     "REST calls / Sync"
@@ -137,6 +145,7 @@ workspace "Plataforma HidroGreen" "Modelo C4 de la plataforma HidroGreen (Contex
         loadBalancer  -> apiSync
         loadBalancer  -> apiNotifications
         loadBalancer  -> apiReports
+        loadBalancer -> apiSubscriptions
 
         // Integración con servicios externos
         apiReports       -> weatherApi "Enriquece con datos climáticos" "REST/HTTPS"
@@ -257,6 +266,11 @@ workspace "Plataforma HidroGreen" "Modelo C4 de la plataforma HidroGreen (Contex
             include *
             autoLayout
         }
+        
+        component apiSubscriptions componentsSubscriptions {
+            include *
+            autoLayout
+        }
 
         component apiReports componentsReports {
             include *
@@ -308,7 +322,7 @@ workspace "Plataforma HidroGreen" "Modelo C4 de la plataforma HidroGreen (Contex
             element "Load Balancer" {
                 shape hexagon
                 background #ffaa22
-                color #000000
+                color #ffffff
             }
             element "API" {
                 shape hexagon
@@ -323,7 +337,7 @@ workspace "Plataforma HidroGreen" "Modelo C4 de la plataforma HidroGreen (Contex
             element "Component" {
                 shape component
                 background #85bbf0
-                color #000000
+                color #ffffff
             }
             element "Infrastructure Node" {
                 shape roundedbox
